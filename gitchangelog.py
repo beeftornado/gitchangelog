@@ -283,6 +283,12 @@ class GitCommit(SubGitObjectMixin):
             float(self.author_date_timestamp))
         return d.strftime('%Y-%m-%d')
 
+    @property
+    def datetimestamp(self):
+        d = datetime.datetime.utcfromtimestamp(
+            float(self.author_date_timestamp))
+        return d.strftime('%Y%m%d%H%M')
+
     def __eq__(self, value):
         if not isinstance(value, GitCommit):
             return False
@@ -446,6 +452,24 @@ class GitRepos(object):
         tags = self.swrap('git tag -l').split("\n")
         return sorted([GitCommit(tag, self) for tag in tags if tag != ''],
                       key=lambda x: int(x.author_date_timestamp), reverse=True)
+
+    @property
+    def version(self):
+        version = self.swrap('git describe --tags').strip()
+
+        ## If there's no post tag commits, just return the tag
+        if len(self.tags) and version == self.tags[0]:
+            return version
+
+        ## Remove the last commit hash from the version label
+        version_split = version.split('-')
+        version = '-'.join(version_split[:len(version_split) - 1])
+
+        ## Get the last modification date via last commit timestamp
+        last_commit_sha = self.swrap('git show -s --pretty=format:%H').strip()
+        last_commit = GitCommit(last_commit_sha, self)
+        version += '.dev_r' + last_commit.datetimestamp
+        return version
 
     def log(self, start="LAST", end="HEAD", include_merges=True):
 
@@ -650,6 +674,7 @@ def changelog(repository, ignore_regexps=None, replace_regexps=None,
               body_split_regexp="\n\n",
               output_engine=rest_py,
               include_merges=True,
+              replace_unreleased_version_label=False
               ):
     """Returns a string containing the changelog of given repository
 
@@ -667,6 +692,7 @@ def changelog(repository, ignore_regexps=None, replace_regexps=None,
     :param unreleased_version_label: version label for untagged commits
     :param template_format: format of template to generate the changelog
     :param include_merges: whether to include merge commits in the log or not
+    :param replace_unreleased_version_label: whether to use git describe --tags instead of unreleased version string
 
     :returns: content of changelog
 
@@ -679,15 +705,16 @@ def changelog(repository, ignore_regexps=None, replace_regexps=None,
         ignore_regexps = []
 
     def new_version(tag, date, opts):
-        title = "%s (%s)" % (tag, date) if tag else \
+        version_name = "%s (%s)" % (tag, date) if tag else \
                 opts["unreleased_version_label"]
-        return {"label": title,
+        return {"label": version_name,
                 "tag": tag,
                 "date": date,
                 }
 
     opts = {
-        'unreleased_version_label': unreleased_version_label,
+        'unreleased_version_label': unreleased_version_label if not replace_unreleased_version_label
+        else repository.version,
         'body_split_regexp': body_split_regexp,
     }
 
@@ -831,16 +858,18 @@ def main():
         fail_if_not_present=False)
 
     content = changelog(repository,
-        ignore_regexps=config['ignore_regexps'],
-        replace_regexps=config['replace_regexps'],
-        section_regexps=config['section_regexps'],
-        unreleased_version_label=config[
-            'unreleased_version_label'],
-        tag_filter_regexp=config['tag_filter_regexp'],
-        body_split_regexp=config['body_split_regexp'],
-        output_engine=config.get("output_engine", rest_py),
-        include_merges=config.get("include_merges", True),
-    )
+                        ignore_regexps=config['ignore_regexps'],
+                        replace_regexps=config['replace_regexps'],
+                        section_regexps=config['section_regexps'],
+                        unreleased_version_label=config[
+                            'unreleased_version_label'],
+                        tag_filter_regexp=config['tag_filter_regexp'],
+                        body_split_regexp=config['body_split_regexp'],
+                        output_engine=config.get("output_engine", rest_py),
+                        include_merges=config.get("include_merges", True),
+                        replace_unreleased_version_label=config.get(
+                            "replace_unreleased_version_label", False),
+                        )
 
     if PY3:
         print(content)
