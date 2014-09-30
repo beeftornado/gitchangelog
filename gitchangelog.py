@@ -447,7 +447,7 @@ class GitRepos(object):
         return sorted([GitCommit(tag, self) for tag in tags if tag != ''],
                       key=lambda x: int(x.author_date_timestamp), reverse=True)
 
-    def log(self, start="LAST", end="HEAD", include_merges=True):
+    def log(self, start="LAST", end="HEAD", include_merges=True, first_parent=True):
 
         ## `end` should be an identifier. If it isn't provided then translate it
         ##   to the first commit sha
@@ -459,9 +459,9 @@ class GitRepos(object):
         aformat = "%x00".join(GIT_FORMAT_KEYS.values())
         try:
             ret = self.swrap(
-                "git log %s..%s -z --first-parent%s --pretty=format:%s --"
-                % (start, end, (' --no-merges' if not include_merges else ''),
-                   aformat))
+                "git log %s..%s -z%s%s --pretty=format:%s --"
+                % (start, end, (' --first-parent' if first_parent else ''),
+                   (' --no-merges' if not include_merges else ''), aformat))
         except ShellError:
             raise ValueError("Given commit identifiers %r..%r don't exist"
                              % (end, start))
@@ -650,6 +650,7 @@ def changelog(repository, ignore_regexps=None, replace_regexps=None,
               body_split_regexp="\n\n",
               output_engine=rest_py,
               include_merges=True,
+              first_parent=True,
               ):
     """Returns a string containing the changelog of given repository
 
@@ -667,6 +668,7 @@ def changelog(repository, ignore_regexps=None, replace_regexps=None,
     :param unreleased_version_label: version label for untagged commits
     :param template_format: format of template to generate the changelog
     :param include_merges: whether to include merge commits in the log or not
+    :param first_parent: whether to only traverse the first parent of a commit
 
     :returns: content of changelog
 
@@ -717,9 +719,15 @@ def changelog(repository, ignore_regexps=None, replace_regexps=None,
             else new_version(None, prev_tag.date, opts)
         sections = collections.defaultdict(list)
 
-        for commit in repository.log(start=tag.identifier,
-                                     end=prev_tag.identifier,
-                                     include_merges=include_merges):
+        ## Commit sha lookup to prevent duplicates in multi-parent traversals
+        processed_sha1s = dict()
+
+        for commit in repository.log(start=tag.identifier, end=prev_tag.identifier, include_merges=include_merges,
+                                     first_parent=first_parent):
+
+            ## Skip commits we have already seen
+            if not first_parent and commit.sha1 in processed_sha1s:
+                continue
 
             if any(re.search(pattern, commit.subject) is not None
                    for pattern in ignore_regexps):
@@ -742,6 +750,10 @@ def changelog(repository, ignore_regexps=None, replace_regexps=None,
                 "subject": subject,
                 "body": commit.body,
             })
+
+            ## Save commit hash to prevent double add
+            if not first_parent:
+                processed_sha1s[commit.sha1] = True
 
         ## Flush current version
         current_version["sections"] = [{"label": k, "commits": sections[k]}
@@ -840,6 +852,7 @@ def main():
         body_split_regexp=config['body_split_regexp'],
         output_engine=config.get("output_engine", rest_py),
         include_merges=config.get("include_merges", True),
+		first_parent=config.get("first_parent", True),
     )
 
     if PY3:
