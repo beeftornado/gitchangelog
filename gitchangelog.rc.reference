@@ -180,3 +180,15 @@ include_merges = True
 ## The default is to only traverse its first parent.
 ##
 first_parent = True
+
+
+## ``replace_unreleased_version_label`` is a boolean
+##
+## This option indicates whether you'd like gitchangelog to use the string specified in
+## ``unreleased_version_label``, or to instead use git's description of the version. If
+## there is no tag at the current commit, then this option will populate it with
+## something similar to '2.1.3-3.dev_r201409290253'. This is an augmented version of
+## git's describe --tags function. It is the previous tag name (2.1.3), the number of
+## commits since that tag (-3), and the date of the last modification/commit (.dev_r201409290253).
+##
+replace_unreleased_version_label = False
