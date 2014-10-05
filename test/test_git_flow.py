@@ -200,11 +200,17 @@ EOF
             ## Fictional non-feature merge into master
             git commit -m 'Merge branch \'develop\' into master' --allow-empty
 
+            ## What if the user merges a tag?
+            git commit -m 'Merge tag 2.0 into master' --allow-empty
+
         """)
         changelog = w('$tprog')
 
         ## The changelog should have a record of this newly added feature
         self.assert_contains(changelog, "long feature 1")
+
+        ## There better not be any tag merges
+        self.assert_not_contains(changelog, "Merge tag")
 
         ## But it shouldn't show us the intermediary merge of master into feature
         self.assert_not_contains(changelog, "master")

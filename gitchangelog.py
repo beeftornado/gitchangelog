@@ -511,7 +511,7 @@ class GitRepos(object):
             ## in the changelog.
             if git_flow:
                 ## Only examine merges
-                if commit.subject.startswith("Merge branch"):
+                if commit.subject.startswith("Merge "):
 
                     ## Skip regular merges (or back-merges) if the user wants
                     ## If the commit doesn't have the git-flow keyword in it,
