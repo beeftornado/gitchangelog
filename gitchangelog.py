@@ -524,7 +524,7 @@ class GitRepos(object):
                     ## Ex: Merge branch 'fix/long_fix_1' -> Fixed long fix 1
                     replace_regexps = collections.OrderedDict([
                         (r'^[Mm]erge[d]?\sbranch\s+', r''),
-                        (r'[\'"]?fix(es)?/', r'fix: Fixed '),
+                        (r'[\'"]?(hot)?fix(es)?/', r'fix: Fixed '),
                         (r'[\'"]?feature(s)?/', r'new: Completed '),
                         (r'/', r' '),
                         (r'_', r' '),
