@@ -72,7 +72,7 @@ class TestCrossBranchTags(GitChangelogTestCase):
 
         """)
         changelog = w('$tprog')
-        self.assertContains(
+        self.assert_contains(
             changelog, "0.0.6",
             msg="Missing a tag (0.0.6) that is located in a branch that was merged into HEAD... "
             "content of changelog:\n%s" % changelog)

@@ -387,9 +387,9 @@ class GitConfig(SubGitObjectMixin):
         super(GitConfig, self).__init__(repos)
 
     def __getattr__(self, label):
-        cmd = "git config %r" % str(label)
+        cmd_str = "git config %r" % str(label)
         try:
-            res = self.swrap(cmd)
+            res = self.swrap(cmd_str)
         except ShellError as e:
             if e.errlvl == 1 and e.out == "" and e.err == "":
                 raise AttributeError("key %r is not found in git config."
@@ -431,8 +431,7 @@ class GitRepos(object):
                                    "(calling ``git remote`` failed.)")
 
         self.bare = self.swrap("git rev-parse --is-bare-repository") == "true"
-        self.toplevel = None if self.bare else \
-                        self.swrap("git rev-parse --show-toplevel")
+        self.toplevel = None if self.bare else self.swrap("git rev-parse --show-toplevel")
         self.gitdir = os.path.normpath(
             os.path.join(self._orig_path,
                          self.swrap("git rev-parse --git-dir")))
@@ -541,7 +540,7 @@ def rest_py(data, opts=None):
                 s += render_commit(commit)
         return s
 
-    def render_commit(commit, opts=opts):
+    def render_commit(commit, render_opts=opts):
         subject = commit["subject"]
         subject += " [%s]" % (commit["author"], )
 
@@ -550,7 +549,7 @@ def rest_py(data, opts=None):
 
         if commit["body"]:
             entry += indent(paragraph_wrap(commit["body"],
-                                           regexp=opts["body_split_regexp"]))
+                                           regexp=render_opts["body_split_regexp"]))
             entry += "\n\n"
 
         return entry
@@ -706,11 +705,10 @@ def changelog(repository, ignore_regexps=None, replace_regexps=None,
     if not ignore_regexps:
         ignore_regexps = []
 
-    def new_version(tag, date, opts):
-        version_name = "%s (%s)" % (tag, date) if tag else \
-                opts["unreleased_version_label"]
+    def new_version(ver_tag, date, ver_opts):
+        version_name = "%s (%s)" % (ver_tag, date) if ver_tag else ver_opts["unreleased_version_label"]
         return {"label": version_name,
-                "tag": tag,
+                "tag": ver_tag,
                 "date": date,
                 }
 
@@ -722,8 +720,8 @@ def changelog(repository, ignore_regexps=None, replace_regexps=None,
 
     ## Setting main container of changelog elements
     title = "Changelog"
-    changelog = {"title": title,
-                 "versions": []}
+    _changelog = {"title": title,
+                  "versions": []}
 
     ## Hash to speedup lookups
     versions_done = {}
@@ -786,12 +784,12 @@ def changelog(repository, ignore_regexps=None, replace_regexps=None,
         current_version["sections"] = [{"label": k, "commits": sections[k]}
                                        for k in section_order
                                        if k in sections]
-        changelog["versions"].append(current_version)
+        _changelog["versions"].append(current_version)
         versions_done[tag] = current_version
 
         prev_tag = tag
 
-    return output_engine(data=changelog, opts=opts)
+    return output_engine(data=_changelog, opts=opts)
 
 
 ##

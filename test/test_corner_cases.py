@@ -18,7 +18,7 @@ class TestEnvironmentCornerCases(GitChangelogTestCase):
         self.assertEqual(
             errlvl, 1,
             msg="Should fail when bogus config file exists but is not a file")
-        self.assertContains(
+        self.assert_contains(
             err, "not a file",
             msg="There should be a error message stating that config file is not a file."
             "Current stderr:\n%r" % err)

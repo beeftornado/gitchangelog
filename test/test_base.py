@@ -32,7 +32,7 @@ class TestConfiguration(GitChangelogTestCase):
             err, "",
             msg="There should be no standard error outputed. "
             "Current stderr:\n%r" % err)
-        self.assertContains(
+        self.assert_contains(
             out, "0.0.2",
             msg="At least one of the tags should be displayed in stdout... "
             "Current stdout:\n%s" % out)
@@ -53,7 +53,7 @@ EOF
 
         """)
         changelog = w('$tprog')
-        self.assertContains(
+        self.assert_contains(
             changelog, "v8.0",
             msg="At least one of the tags should be displayed in changelog... "
             "content of changelog:\n%s" % changelog)
@@ -69,15 +69,15 @@ ignore_regexps += [r'XXX', ]
 EOF
         """)
         changelog = w('$tprog')
-        self.assertNotContains(
+        self.assert_not_contains(
             changelog, "XXX",
             msg="Should not contain commit with XXX in it... "
             "content of changelog:\n%s" % changelog)
-        self.assertContains(
+        self.assert_contains(
             changelog, "dd file ``e``",
             msg="Should contain at least a message of other commits... "
             "content of changelog:\n%s" % changelog)
-        self.assertNotContains(
+        self.assert_not_contains(
             changelog, "!minor",
             msg="Shouldn't contain !minor tagged commit neither... "
             "content of changelog:\n%s" % changelog)
@@ -95,7 +95,7 @@ class TestInitArgument(GitChangelogTestCase):
             err, "",
             msg="There should be no standard error outputed. "
             "Current stdout:\n%r" % out)
-        self.assertContains(
+        self.assert_contains(
             out, "created",
             msg="Output message should mention that the file was created... "
             "Current stdout:\n%s" % out)
@@ -110,7 +110,7 @@ class TestInitArgument(GitChangelogTestCase):
         self.assertEqual(
             errlvl, 1,
             msg="Should fail to init on simple git repository")
-        self.assertContains(
+        self.assert_contains(
             err, "exists",
             msg="There should be a error msg mentioning the file exists. "
             "Current stderr:\n%r" % err)
@@ -125,7 +125,7 @@ class TestInitArgument(GitChangelogTestCase):
         self.assertEqual(
             errlvl, 1,
             msg="Should fail to init outside a git repository.")
-        self.assertContains(
+        self.assert_contains(
             err, "repository",
             msg="There should be a error msg mentioning 'repository'. "
             "Current stderr:\n%r" % err)
@@ -145,7 +145,7 @@ class TestInitArgument(GitChangelogTestCase):
         self.assertEqual(
             errlvl, 1,
             msg="Should fail to init outside a git repository.")
-        self.assertContains(
+        self.assert_contains(
             err, "bare",
             msg="There should be a error msg mentioning 'bare'. "
             "Current stderr:\n%r" % err)
@@ -165,7 +165,7 @@ class TestInitArgument(GitChangelogTestCase):
         self.assertEqual(
             errlvl, 0,
             msg="Should not fail in sub directory.")
-        self.assertContains(
+        self.assert_contains(
             out, "created",
             msg="There should  msg mentioning the file was 'created'. "
             "Current stdout:\n%r" % out)

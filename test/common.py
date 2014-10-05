@@ -40,17 +40,17 @@ cmd = set_env("tprog", tprog)(gitchangelog.cmd)
 
 class ExtendedTestCase(unittest.TestCase):
 
-    def assertContains(self, haystack, needle, msg=None):
+    def assert_contains(self, haystack, needle, msg=None):
         if not msg:
             msg = "%r should contain %r." % (haystack, needle)
         self.assertTrue(needle in haystack, msg)
 
-    def assertNotContains(self, haystack, needle, msg=None):
+    def assert_not_contains(self, haystack, needle, msg=None):
         if not msg:
             msg = "%r should not contain %r." % (haystack, needle)
         self.assertTrue(needle not in haystack, msg)
 
-    def assertRegex(self, text, regex, msg=None):
+    def assert_regex(self, text, regex, msg=None):
         if not msg:
             msg = "%r should match regex %r." % (text, regex)
         self.assertTrue(re.search(regex, text, re.MULTILINE) is not None, msg)
