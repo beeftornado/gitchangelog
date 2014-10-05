@@ -233,3 +233,23 @@ EOF
         self.assert_contains(changelog, "Completed big feature")
         self.assert_contains(changelog, "Fixed save the world")
         self.assert_not_contains(changelog, "into develop")
+
+    def test_git_flow_hotfix_branch(self):
+        """ Test the git flow option counts hotfixes as fixes """
+
+        w("""
+            cat <<EOF > .gitchangelog.rc
+
+include_merges = False
+git_flow = True
+
+EOF
+            ## Instead of creating a real git history, I find it easier to fake the merges
+            git commit -m 'Merge branch hotfix/ticket-123_red_button into develop' --allow-empty
+
+        """)
+        changelog = w('$tprog')
+
+        ## The changelog should have properly formatted text for both
+        self.assert_contains(changelog, "Fixed ticket-123 red button")
+        self.assert_not_contains(changelog, "into develop")
