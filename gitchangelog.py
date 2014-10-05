@@ -470,7 +470,8 @@ class GitRepos(object):
         version += '.dev_r' + last_commit.datetimestamp
         return version
 
-    def log(self, start="LAST", end="HEAD", include_merges=True, first_parent=True):
+    def log(self, start="LAST", end="HEAD", include_merges=True, first_parent=True,
+            git_flow=False):
 
         ## `end` should be an identifier. If it isn't provided then translate it
         ##   to the first commit sha
@@ -482,9 +483,12 @@ class GitRepos(object):
         aformat = "%x00".join(GIT_FORMAT_KEYS.values())
         try:
             ret = self.swrap(
-                "git log %s..%s -z%s%s --pretty=format:%s --"
-                % (start, end, (' --first-parent' if first_parent else ''),
-                   (' --no-merges' if not include_merges else ''), aformat))
+                "git log {0}..{1} -z{2}{3} --pretty=format:{4} --".format(
+                    start, end,
+                    ' --first-parent' if first_parent else '',
+                    ' --no-merges' if not (include_merges or git_flow) else '',
+                    aformat
+                ))
         except ShellError:
             raise ValueError("Given commit identifiers %r..%r don't exist"
                              % (end, start))
@@ -497,9 +501,43 @@ class GitRepos(object):
             return c
 
         values = iter(ret.split('\x00'))
-        while True:  ## values.next() will eventualy raise a StopIteration
-            yield mk_commit(dict([(key, next(values))
-                                  for key in GIT_FORMAT_KEYS]))
+        while True:
+            ## values.next() will eventually raise a StopIteration
+            commit = mk_commit(dict([(key, next(values))
+                                    for key in GIT_FORMAT_KEYS]))
+
+            ## Filter the commits returned in the case of using git-flow because
+            ## all merges had to be retrieved to look for special ones to include
+            ## in the changelog.
+            if git_flow:
+                ## Only examine merges
+                if commit.subject.startswith("Merge branch"):
+
+                    ## Skip regular merges (or back-merges) if the user wants
+                    ## If the commit doesn't have the git-flow keyword in it,
+                    ## then skip.
+                    if not include_merges:
+                        if all(re.search(pattern, commit.subject) is None
+                           for pattern in [r'feature(s)?/', r'fix(es)?']):
+                            continue
+
+                    ## Ex: Merge branch 'fix/long_fix_1' -> Fixed long fix 1
+                    replace_regexps = collections.OrderedDict([
+                        (r'^[Mm]erge[d]?\sbranch\s+', r''),
+                        (r'[\'"]?fix(es)?/', r'fix: Fixed '),
+                        (r'[\'"]?feature(s)?/', r'new: Completed '),
+                        (r'/', r' '),
+                        (r'_', r' '),
+                        (r'[\'"]', r''),
+                        (r'\s+into\s\w+$', r''),
+                    ])
+
+                    subject = commit.subject
+                    for regexp, replacement in replace_regexps.items():
+                        subject = re.sub(regexp, replacement, subject)
+                    commit.subject = subject
+
+            yield commit
 
 
 def first_matching(section_regexps, string):
@@ -674,7 +712,8 @@ def changelog(repository, ignore_regexps=None, replace_regexps=None,
               output_engine=rest_py,
               include_merges=True,
               first_parent=True,
-              replace_unreleased_version_label=False
+              replace_unreleased_version_label=False,
+              git_flow=False,
               ):
     """Returns a string containing the changelog of given repository
 
@@ -694,6 +733,7 @@ def changelog(repository, ignore_regexps=None, replace_regexps=None,
     :param include_merges: whether to include merge commits in the log or not
     :param first_parent: whether to only traverse the first parent of a commit
     :param replace_unreleased_version_label: whether to use git describe --tags instead of unreleased version string
+    :param git_flow: whether to include special merge commits in the changelog
 
     :returns: content of changelog
 
@@ -747,8 +787,9 @@ def changelog(repository, ignore_regexps=None, replace_regexps=None,
         ## Commit sha lookup to prevent duplicates in multi-parent traversals
         processed_sha1s = dict()
 
-        for commit in repository.log(start=tag.identifier, end=prev_tag.identifier, include_merges=include_merges,
-                                     first_parent=first_parent):
+        for commit in repository.log(start=tag.identifier, end=prev_tag.identifier,
+                                     include_merges=include_merges, first_parent=first_parent,
+                                     git_flow=git_flow):
 
             ## Skip commits we have already seen
             if not first_parent and commit.sha1 in processed_sha1s:
@@ -867,20 +908,20 @@ def main():
         default_filename=reference_config,
         fail_if_not_present=False)
 
-    content = changelog(repository,
-                        ignore_regexps=config['ignore_regexps'],
-                        replace_regexps=config['replace_regexps'],
-                        section_regexps=config['section_regexps'],
-                        unreleased_version_label=config[
-                            'unreleased_version_label'],
-                        tag_filter_regexp=config['tag_filter_regexp'],
-                        body_split_regexp=config['body_split_regexp'],
-                        output_engine=config.get("output_engine", rest_py),
-                        include_merges=config.get("include_merges", True),
-                        first_parent=config.get("first_parent", True),
-                        replace_unreleased_version_label=config.get(
-                            "replace_unreleased_version_label", False),
-                        )
+    content = changelog(
+        repository,
+        ignore_regexps=config['ignore_regexps'],
+        replace_regexps=config['replace_regexps'],
+        section_regexps=config['section_regexps'],
+        unreleased_version_label=config['unreleased_version_label'],
+        tag_filter_regexp=config['tag_filter_regexp'],
+        body_split_regexp=config['body_split_regexp'],
+        output_engine=config.get("output_engine", rest_py),
+        include_merges=config.get("include_merges", True),
+        first_parent=config.get("first_parent", True),
+        replace_unreleased_version_label=config.get("replace_unreleased_version_label", False),
+        git_flow=config.get("git_flow", False),
+    )
 
     if PY3:
         print(content)

@@ -192,3 +192,22 @@ first_parent = True
 ## commits since that tag (-3), and the date of the last modification/commit (.dev_r201409290253).
 ##
 replace_unreleased_version_label = False
+
+
+## ``git_flow`` is a boolean
+##
+## This option indicates whether you use the 'git-flow' style of branching.
+##
+## http://nvie.com/posts/a-successful-git-branching-model/
+##
+## If you create new branches for features under 'feature/*' and new branches
+## for bug fixes under 'fix/*' then you will find that gitchangelog's default behavior
+## to be either too verbose, or not verbose enough. Enabling the inclusion of
+## merge commits will sort of work for you, but if you have any back-porting
+## of 'fix/*' into develop (originally branched off master), you start getting
+## commits in the log you don't want. The second problem is that merge commits always
+## appear under "Other" which may not be appropriate when merging new features.
+## This option will include only those special git-flow style branches, and also
+## place the commit into the right section of the changelog.
+##
+git_flow = False
